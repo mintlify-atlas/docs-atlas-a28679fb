@@ -1,0 +1,85 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Zenfi JavaScript SDK",
+  "projectDescription": "JavaScript SDK for Zenfi partners to auto-fill forms and track lead events",
+  "theme": "palm",
+  "primaryColor": "#6366F1",
+  "lightColor": "#818CF8",
+  "darkColor": "#4F46E5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/authentication",
+              "concepts/form-autofill",
+              "concepts/event-tracking",
+              "concepts/cookies"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/nodejs-setup",
+              "guides/browser-setup",
+              "guides/target-configuration",
+              "guides/tracking-events"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/constructor",
+              "api/fetch-data",
+              "api/fill-targets"
+            ]
+          },
+          {
+            "group": "Event Tracking",
+            "pages": [
+              "api/track-conversion",
+              "api/track-abortion",
+              "api/track-pageview",
+              "api/init-pageviews-tracking"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Auto-fill form inputs with user data from Zenfi API",
+    "Track lead conversion events (register, clicks, form submissions)",
+    "Track lead abortion events (rejections, declined offers)",
+    "Automatic page view tracking",
+    "Cookie-based user identity management across domains",
+    "Support for both Node.js and browser environments",
+    "Flexible target configuration with custom selectors and strategies",
+    "Before and after action hooks for custom behavior"
+  ],
+  "publicApiSurface": [
+    "new ZenfiSDK({ partnerName, cookiesDomain, targets })",
+    "fetchData()",
+    "fillTargets()",
+    "trackConversion(name, properties)",
+    "trackAbortion(name, properties)",
+    "trackPageView()",
+    "initPageViewsTracking()"
+  ]
+}
