@@ -1,0 +1,161 @@
+---
+title: 'Authentication'
+description: 'Learn how authentication works in the Zenfi SDK using tokens and IDs'
+icon: 'key'
+---
+
+## Overview
+
+The Zenfi SDK uses a dual authentication system with **tokens** and **IDs** to identify and authenticate leads. These credentials are automatically extracted from URL parameters and persisted in cookies for seamless tracking across pages.
+
+## Authentication Flow
+
+### URL Parameter Extraction
+
+When the SDK initializes, it automatically checks for authentication parameters in the URL:
+
+- `zfid` - The Zenfi lead ID
+- `zftoken` - The authentication token
+
+```javascript
+const zenfi = new ZenfiSDK({ partnerName: 'yourpartner' });
+// Automatically extracts zfid and zftoken from URL on initialization
+```
+
+<Note>
+The token parameter (`zftoken`) is automatically removed from the URL after extraction to prevent exposing sensitive credentials in the browser history.
+</Note>
+
+### Token Management
+
+The SDK provides getter and setter methods for managing the authentication token:
+
+```javascript
+// Set token manually
+zenfi.token = 'your-auth-token';
+
+// Get current token
+const token = zenfi.token;
+
+// Remove token
+zenfi.token = null;
+```
+
+<Info>
+Tokens are automatically persisted to cookies (`zenfi_token`) when set and retrieved from cookies when accessed.
+</Info>
+
+### ID Management
+
+Similarly, the Zenfi ID can be managed programmatically:
+
+```javascript
+// Set ID manually
+zenfi.id = 'lead-id-12345';
+
+// Get current ID
+const id = zenfi.id;
+```
+
+The ID is stored in the `zenfi_id` cookie and persists across sessions.
+
+## Authentication Required Operations
+
+### Fetching Lead Data
+
+The `fetchData()` method requires a valid token to retrieve lead information:
+
+```javascript
+const leadInfo = await zenfi.fetchData();
+
+if (leadInfo) {
+  console.log('Lead data:', leadInfo);
+} else {
+  console.log('No token available');
+}
+```
+
+**Implementation Details** (src/index.js:53-61):
+
+- Returns `null` if no token is available
+- Caches the lead info to avoid redundant API calls
+- Automatically clears the token if a 401 Unauthorized error occurs
+
+### Event Tracking
+
+Event tracking methods also require a valid token:
+
+```javascript
+zenfi.trackConversion('signup', { plan: 'premium' });
+zenfi.trackAbortion('rejected', { reason: 'insufficient_credit' });
+```
+
+<Warning>
+If you attempt to track events without a token, the methods will return `null` and the event will not be sent.
+</Warning>
+
+## Token Invalidation
+
+The SDK automatically handles token invalidation:
+
+**When a 401 Unauthorized response is received** (src/index.js:58):
+```javascript
+if (error.message.includes('UNAUTHORIZED')) this.token = null;
+```
+
+This clears the token from both memory and cookies, requiring the user to authenticate again.
+
+## Security Considerations
+
+<AccordionGroup>
+  <Accordion title="Token Storage">
+    Tokens are stored in secure, HTTP-only cookies with the following attributes:
+    - `secure: true` - Only transmitted over HTTPS
+    - `path: /` - Available across the entire domain
+    - `expires: 365 days` - Long-lived for persistent sessions
+  </Accordion>
+
+  <Accordion title="URL Parameter Cleanup">
+    The SDK automatically removes the `zftoken` parameter from the URL after extraction to prevent:
+    - Token exposure in browser history
+    - Token leakage through referrer headers
+    - Accidental sharing of authenticated URLs
+  </Accordion>
+
+  <Accordion title="Domain Configuration">
+    Configure the `cookiesDomain` parameter to control where cookies are accessible:
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      cookiesDomain: '.example.com' // Accessible across all subdomains
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## API Reference
+
+### Token API Endpoint
+
+Lead information is fetched from:
+```
+GET https://api.zenfi.mx/products/leads/info?token={token}
+```
+
+**Response Format** (src/fetcher.js:26):
+```json
+{
+  "info": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "+1234567890"
+  }
+}
+```
+
+**Error Codes**:
+- `401` - Unauthorized (invalid or expired token)
+- Other status codes return error with `code` field
+
+<Card title="Next Steps" icon="arrow-right" href="/concepts/form-autofill">
+  Learn how to use authenticated data to auto-fill forms
+</Card>

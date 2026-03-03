@@ -1,0 +1,196 @@
+---
+title: 'fillTargets()'
+description: 'Auto-fill HTML elements with lead data'
+---
+
+## Syntax
+
+```javascript
+await zenfi.fillTargets()
+```
+
+## Parameters
+
+This method takes no parameters. It uses the `targets` configuration provided during SDK initialization.
+
+## Return Value
+
+Returns a `Promise` that resolves when all targets have been processed.
+
+## Examples
+
+### Basic Auto-fill
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'value'
+    },
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value'
+    }
+  ]
+});
+
+await zenfi.fillTargets();
+// The #nameInput and #emailInput elements are now filled with lead data
+```
+
+### Auto-fill with Text Content
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#welcomeMessage',
+      strategy: 'text'
+    }
+  ]
+});
+
+await zenfi.fillTargets();
+// The #welcomeMessage div now displays the lead's name as text
+```
+
+### Auto-fill with Before/After Actions
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value',
+      beforeAction: ({ value, element }) => {
+        console.log('Filling email:', value);
+        if (element) {
+          element.classList.add('loading');
+        }
+      },
+      afterAction: ({ element }) => {
+        element.classList.remove('loading');
+        element.classList.add('filled');
+        // Trigger validation
+        element.dispatchEvent(new Event('blur'));
+      }
+    }
+  ]
+});
+
+await zenfi.fillTargets();
+```
+
+### React App Example
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'nativeValue',
+      afterAction: ({ element }) => {
+        // Trigger React's onChange event
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    },
+    {
+      dataKey: 'phone',
+      selector: '#phoneInput',
+      strategy: 'nativeValue',
+      afterAction: ({ element }) => {
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  ]
+});
+
+await zenfi.fillTargets();
+```
+
+### Dynamic Selectors
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'email',
+      selector: ({ dataKey, value }) => {
+        // Use different selectors based on conditions
+        return value.includes('@gmail.com') 
+          ? '#gmailInput' 
+          : `#${dataKey}Input`;
+      },
+      strategy: 'value'
+    }
+  ]
+});
+
+await zenfi.fillTargets();
+```
+
+### Triggering Clicks
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'acceptTerms',
+      selector: '#termsCheckbox',
+      strategy: 'click'
+    }
+  ]
+});
+
+await zenfi.fillTargets();
+// The checkbox is automatically clicked if acceptTerms is truthy
+```
+
+## Behavior
+
+1. **Data Fetching**: The method automatically calls `fetchData()` if lead data hasn't been fetched yet.
+
+2. **Target Processing**: Each target in the `targets` array is processed sequentially:
+   - The value is retrieved from `leadInfo` using the `dataKey`
+   - If the value is `null` or `undefined`, the target is skipped
+   - The selector is resolved (function or string)
+   - `beforeAction` is called if provided
+   - The DOM element is selected
+   - If the element doesn't exist, the target is skipped
+   - The filling strategy is applied
+   - `afterAction` is called if provided
+
+3. **Element Selection**: Elements are selected using `document.querySelector()`. If the element isn't found, that target is skipped without throwing an error.
+
+4. **Retry Logic**: The DOM element is queried again after `beforeAction` in case the callback modified the DOM (e.g., adding new elements).
+
+## Filling Strategies
+
+<ParamField path="strategy" type="enum" default="value">
+  - **value**: Sets `element.value = data` (for input fields)
+  - **nativeValue**: Uses React-compatible native setter (for React apps)
+  - **text**: Sets `element.innerText = data` (for divs, spans, etc.)
+  - **click**: Calls `element.click()` (for checkboxes, buttons)
+</ParamField>
+
+## Callback Parameters
+
+Both `beforeAction` and `afterAction` receive an object with:
+
+- `value`: The data value from `leadInfo`
+- `selector`: The resolved CSS selector string
+- `strategy`: The strategy being used
+- `element`: The DOM element (may be `null` in `beforeAction` if not found)
+
+## Notes
+
+- This method is safe to call even if no token is available; targets will simply be skipped
+- Missing elements or data keys don't throw errors; they're silently skipped
+- For React applications, always use the `nativeValue` strategy and dispatch input events in `afterAction`
+- The method waits for data fetching but processes targets synchronously

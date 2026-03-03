@@ -1,0 +1,118 @@
+---
+title: 'fetchData()'
+description: 'Fetch lead information from the Zenfi API'
+---
+
+## Syntax
+
+```javascript
+const leadInfo = await zenfi.fetchData()
+```
+
+## Parameters
+
+This method takes no parameters.
+
+## Return Value
+
+Returns a `Promise` that resolves to:
+- An object containing the lead information if a valid token is available
+- `null` if no token is available or if the token is invalid
+
+The returned lead information is also stored in the `zenfi.leadInfo` property.
+
+## Examples
+
+### Basic Usage
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+const leadInfo = await zenfi.fetchData();
+
+if (leadInfo) {
+  console.log(leadInfo);
+  // {
+  //   name: 'John Doe',
+  //   email: 'john@example.com',
+  //   phone: '+1234567890'
+  // }
+}
+```
+
+### Accessing Data After Fetch
+
+```javascript
+const zenfi = new ZenfiSDK();
+
+await zenfi.fetchData();
+
+// Access the cached data
+console.log(zenfi.leadInfo);
+// {
+//   name: 'Chewbacca',
+//   email: 'chewy@lucasfilm.com'
+// }
+```
+
+### Error Handling
+
+```javascript
+const zenfi = new ZenfiSDK();
+
+const leadInfo = await zenfi.fetchData();
+
+if (!leadInfo) {
+  console.log('No token available or token is invalid');
+} else {
+  console.log('Lead data:', leadInfo);
+}
+```
+
+### Using in an Async Function
+
+```javascript
+async function initializeApp() {
+  const zenfi = new ZenfiSDK({
+    partnerName: 'myapp'
+  });
+
+  const data = await zenfi.fetchData();
+  
+  if (data) {
+    // Pre-populate form with lead data
+    document.getElementById('name').value = data.name || '';
+    document.getElementById('email').value = data.email || '';
+  }
+}
+
+initializeApp();
+```
+
+## Behavior
+
+1. **Token Check**: If no token is available, the method immediately returns `null` without making an API request.
+
+2. **Caching**: If `leadInfo` has already been fetched in the current session, the method returns the cached data without making a new API request.
+
+3. **Authentication**: The method uses the token stored in cookies or URL parameters to authenticate the request.
+
+4. **Error Handling**: If the API returns an `UNAUTHORIZED` error (401), the token is automatically cleared from cookies, and the method returns `null`.
+
+5. **Data Storage**: Successfully fetched data is stored in the `zenfi.leadInfo` property for future access.
+
+## API Endpoint
+
+This method makes a GET request to:
+
+```
+https://api.zenfi.mx/products/leads/info?token={token}
+```
+
+## Notes
+
+- This method is automatically called by `fillTargets()` if lead data hasn't been fetched yet
+- The token is typically provided via URL parameters when users are redirected from Zenfi
+- Once the token is used and stored in cookies, it persists across page reloads

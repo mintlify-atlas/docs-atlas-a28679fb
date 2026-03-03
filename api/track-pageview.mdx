@@ -1,0 +1,117 @@
+---
+title: 'trackPageView()'
+description: 'Track page view events with URL metadata'
+---
+
+## Overview
+
+Sends a conversion event with the name "PageView" to the Zenfi API. This method automatically captures and includes metadata about the current URL, including the full href, hash, search parameters, protocol, hostname, and pathname.
+
+## Method Signature
+
+```javascript
+zenfi.trackPageView()
+```
+
+## Parameters
+
+This method takes no parameters. URL metadata is automatically captured from `window.location`.
+
+## Return Value
+
+Returns a Promise that resolves when the event is sent to the Zenfi API. Returns `null` if no token is available.
+
+## Behavior
+
+- Requires a valid token to send events (obtained from URL parameters or cookies)
+- Requires `partnerName` to be set during SDK initialization
+- Sends a conversion event with the name `'PageView'`
+- Automatically includes the following URL properties:
+  - `href` - The complete URL
+  - `hash` - The anchor/hash portion of the URL (e.g., `#section`)
+  - `search` - The query string portion of the URL (e.g., `?id=123`)
+  - `protocol` - The protocol (e.g., `https:`)
+  - `hostname` - The domain name (e.g., `example.com`)
+  - `pathname` - The path portion of the URL (e.g., `/products/item`)
+- Sends a POST request to `https://api.zenfi.mx/webhooks/leads/:partner/converted`
+- Throws an error if `partnerName` was not provided during initialization
+
+## Examples
+
+### Manual Page View Tracking
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Track the current page view
+zenfi.trackPageView();
+```
+
+### Track Page View on Route Change
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Manually track page views in a single-page application
+function navigateTo(route) {
+  // Your navigation logic here
+  history.pushState({}, '', route);
+  
+  // Track the new page view
+  zenfi.trackPageView();
+}
+
+navigateTo('/products');
+```
+
+### Track Page View After User Action
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Track page view when modal opens
+function openProductDetails(productId) {
+  // Update URL with hash
+  window.location.hash = `product-${productId}`;
+  
+  // Track the view
+  zenfi.trackPageView();
+  
+  // Show modal
+  showModal(productId);
+}
+```
+
+## Captured Metadata Example
+
+When called on a URL like `https://example.com/products/item?id=123#details`, the method captures:
+
+```javascript
+{
+  href: 'https://example.com/products/item?id=123#details',
+  hash: '#details',
+  search: '?id=123',
+  protocol: 'https:',
+  hostname: 'example.com',
+  pathname: '/products/item'
+}
+```
+
+## Use Cases
+
+- **Manual page tracking**: Track specific page views in multi-page applications
+- **Route change tracking**: Track navigation in single-page applications (SPAs)
+- **Modal/overlay tracking**: Track when users view important content overlays
+- **Hash navigation**: Track anchor-based navigation within a page
+
+## Related Methods
+
+- [initPageViewsTracking()](/api/init-pageviews-tracking) - Automatically track all page views and URL changes
+- [trackConversion()](/api/track-conversion) - Track custom conversion events
+- [trackAbortion()](/api/track-abortion) - Track abortion events

@@ -1,0 +1,140 @@
+---
+title: 'Constructor'
+description: 'Create a new instance of the Zenfi SDK'
+---
+
+## Syntax
+
+```javascript
+const zenfi = new ZenfiSDK(options)
+```
+
+## Parameters
+
+<ParamField path="options" type="object">
+  Configuration object for the SDK instance
+
+  <ParamField path="partnerName" type="string">
+    The name of the platform implementing the SDK. This parameter is required to send events to the Zenfi API using tracking methods like `trackConversion()` or `trackAbortion()`.
+  </ParamField>
+
+  <ParamField path="cookiesDomain" type="string">
+    The [domain space](https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie) where the cookies will be available. When this value is empty, cookies will only be accessible in the current domain/subdomain.
+  </ParamField>
+
+  <ParamField path="targets" type="array" default="[]">
+    The list of HTML elements and their configuration to be filled with lead data.
+
+    <ParamField path="dataKey" type="string" required>
+      The name of the key in the `leadInfo` object which contains the information to be filled.
+    </ParamField>
+
+    <ParamField path="selector" type="string | function" required>
+      The CSS selector to find the element in the DOM. If a function is passed, it will receive an object with `{ dataKey, strategy, value }` properties and must return a string with the CSS selector.
+    </ParamField>
+
+    <ParamField path="strategy" type="enum" default="value">
+      Indicates the type of strategy to fill the DOM element. Possible values:
+      - `value`: Sets the value property of an input
+      - `nativeValue`: Sets the value using React-compatible native setter (for React apps)
+      - `text`: Puts the content inside the HTML tag as text (for `<div>`, `<span>`, etc.)
+      - `click`: Triggers a click on the DOM element
+    </ParamField>
+
+    <ParamField path="beforeAction" type="function">
+      An optional function executed before the target is filled. Receives an object with `{ selector, strategy, value, element }` properties, where `element` is the DOM node (may be `null` if not found).
+    </ParamField>
+
+    <ParamField path="afterAction" type="function">
+      An optional function executed after the target is filled. Receives an object with `{ selector, strategy, value, element }` properties, where `element` is the filled DOM node.
+    </ParamField>
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+Returns a new `ZenfiSDK` instance.
+
+## Examples
+
+### Basic Usage
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com'
+});
+```
+
+### With Auto-fill Targets
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com',
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'value'
+    },
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value'
+    }
+  ]
+});
+```
+
+### With Dynamic Selectors and Callbacks
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  targets: [
+    {
+      dataKey: 'email',
+      strategy: 'value',
+      selector: ({ dataKey }) => `#${dataKey}Input`,
+      beforeAction: ({ value }) => {
+        console.log('About to fill with:', value);
+      },
+      afterAction: ({ element }) => {
+        element.classList.add('filled');
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  ]
+});
+```
+
+### React App Example
+
+For React applications, use the `nativeValue` strategy to properly trigger React's event system:
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'nativeValue',
+      afterAction: ({ element }) => {
+        // Trigger React's onChange event
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  ]
+});
+```
+
+## Behavior
+
+When the SDK is initialized, it automatically:
+
+1. Checks URL parameters for `id` and `token` values
+2. If found, stores them in cookies and removes the `token` from the URL (for security)
+3. Retrieves existing `id` and `token` from cookies if previously set
+
+These values are used to authenticate requests to the Zenfi API when fetching lead data or tracking events.

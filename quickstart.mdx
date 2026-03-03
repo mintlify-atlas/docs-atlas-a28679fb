@@ -1,80 +1,207 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get started with Zenfi SDK in minutes with this step-by-step guide
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
+Get up and running with Zenfi SDK in just a few steps.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+Before you begin, make sure you have:
+
+- Your partner name provided by Zenfi
+- A domain where you'll be using the SDK
+- Basic knowledge of JavaScript
+
+## Basic Setup
+
+<Steps>
+  <Step title="Install the SDK">
+    Install via npm or add the CDN script to your HTML:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    ```bash
+    npm install --save @zenfi/js-sdk
+    ```
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    See the [Installation](/installation) page for detailed instructions.
+  </Step>
+  
+  <Step title="Initialize the SDK">
+    Create a new instance of ZenfiSDK with your partner configuration:
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```javascript
+    const ZenfiSDK = require('@zenfi/js-sdk');
+    
+    const zenfi = new ZenfiSDK({
+      partnerName: 'credifast',
+      cookiesDomain: 'credifast.com',
+      targets: [
+        {
+          dataKey: 'name',
+          strategy: 'value',
+          selector: '#nameInput'
+        },
+        {
+          dataKey: 'email',
+          strategy: 'value',
+          selector: '#emailInput'
+        }
+      ]
+    });
+    ```
+  </Step>
+  
+  <Step title="Auto-fill form fields">
+    Call `fillTargets()` to automatically populate form fields with user data:
+    
+    ```javascript
+    await zenfi.fillTargets();
+    // Form inputs will be automatically filled with lead information
+    ```
+    
+    This will:
+    - Fetch lead information from the Zenfi API
+    - Auto-fill the configured target elements with user data
+  </Step>
+  
+  <Step title="Track events">
+    Track user actions throughout your funnel:
+    
+    ```javascript
+    // Track a conversion event
+    zenfi.trackConversion('addToCart', {
+      price: 100,
+      amount: 2
+    });
+    
+    // Track page views automatically
+    zenfi.initPageViewsTracking();
+    ```
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Complete Example
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Here's a complete example showing form auto-fill with advanced features:
 
-### Step 3: Go live
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com',
+  targets: [
+    {
+      dataKey: 'name',
+      strategy: 'value',
+      selector: '#nameInput'
+    },
+    {
+      dataKey: 'email',
+      strategy: 'value',
+      selector: ({ dataKey }) => `#${dataKey}Input`,
+      beforeAction: () => console.log('before filling info'),
+      afterAction: ({ element }) => element.classList.add('changed')
+    }
+  ]
+});
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+// Auto-fill the form
+await zenfi.fillTargets();
 
-## Next steps
+// Track page views automatically
+zenfi.initPageViewsTracking();
 
-Now that you have your docs running, explore these key features:
+// Track custom conversion events
+zenfi.trackConversion('formSubmitted', {
+  formType: 'registration',
+  timestamp: new Date().toISOString()
+});
+```
 
-<CardGroup cols={2}>
+## Fetching Lead Data
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+You can also fetch lead information without auto-filling:
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+```javascript
+const zenfi = new ZenfiSDK();
+await zenfi.fetchData();
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+console.log(zenfi.leadInfo);
+/*
+Prints:
+{
+  name: 'Chewbacca',
+  email: 'chewy@lucasfilm.com'
+}
+*/
+```
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The SDK automatically handles lead identification through URL parameters and cookies. Make sure users arrive at your site with the proper Zenfi tracking parameters.
 </Note>
+
+## Configuration Options
+
+When creating a ZenfiSDK instance, you can configure:
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| `partnerName` | String | Yes (for events) | Your partner name provided by Zenfi |
+| `cookiesDomain` | String | No | Domain where cookies will be available |
+| `targets` | Array | No | Configuration for auto-filling form elements |
+
+### Target Configuration
+
+Each target in the `targets` array supports:
+
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `dataKey` | String | Required | Key name in the lead data object |
+| `selector` | String or Function | Required | CSS selector or function returning selector |
+| `strategy` | `'value'` \| `'text'` \| `'click'` | `'value'` | How to fill the element |
+| `beforeAction` | Function | Optional | Callback before filling |
+| `afterAction` | Function | Optional | Callback after filling |
+
+## Tracking Events
+
+The SDK provides multiple methods for event tracking:
+
+<CodeGroup>
+
+```javascript Conversion Events
+// Track when users move forward in the funnel
+zenfi.trackConversion('register', {
+  source: 'homepage',
+  userId: '12345'
+});
+```
+
+```javascript Abortion Events
+// Track when users are rejected or leave
+zenfi.trackAbortion('declinedOffer', {
+  reason: 'User got a better interest rate elsewhere'
+});
+```
+
+```javascript Page Views
+// Track a single page view
+zenfi.trackPageView();
+
+// Or enable automatic tracking
+zenfi.initPageViewsTracking();
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Constructor Reference" icon="code" href="/api/constructor">
+    Learn about all constructor options and parameters
+  </Card>
+  
+  <Card title="Target Configuration" icon="bullseye" href="/guides/target-configuration">
+    Advanced guide on configuring form auto-fill targets
+  </Card>
+</CardGroup>

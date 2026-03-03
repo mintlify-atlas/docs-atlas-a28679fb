@@ -1,0 +1,470 @@
+---
+title: 'Cookie Management'
+description: 'Learn how the Zenfi SDK manages cookies and domain configuration'
+icon: 'cookie-bite'
+---
+
+## Overview
+
+The Zenfi SDK uses cookies to persist authentication credentials and user identity across page loads and sessions. Understanding cookie configuration is essential for multi-domain tracking and proper SDK operation.
+
+## Cookie Storage
+
+### Cookie Names
+
+The SDK uses two cookies (src/cookies.js:5-8):
+
+<CardGroup cols={2}>
+  <Card title="zenfi_id" icon="fingerprint">
+    Stores the Zenfi lead ID for user identification
+  </Card>
+  <Card title="zenfi_token" icon="key">
+    Stores the authentication token for API access
+  </Card>
+</CardGroup>
+
+### Cookie Attributes
+
+All cookies are set with secure attributes (src/cookies.js:12-17):
+
+```javascript
+Cookies.set(name, value, {
+  domain,        // Configured domain
+  expires: 365,  // 1 year expiration
+  path: '/',     // Available on all paths
+  secure: true   // HTTPS only
+});
+```
+
+<Info>
+**Cookie Lifetime**: Cookies persist for 365 days from the time they are set, ensuring long-term user tracking across sessions.
+</Info>
+
+## Domain Configuration
+
+### Basic Setup
+
+Configure the cookie domain during SDK initialization:
+
+```javascript
+const zenfi = new ZenfiSDK({
+  cookiesDomain: '.example.com'
+});
+```
+
+<ParamField path="cookiesDomain" type="string">
+  The domain where cookies will be accessible. When empty or undefined, cookies are only accessible on the current domain/subdomain.
+</ParamField>
+
+### Domain Scope Strategies
+
+<Tabs>
+  <Tab title="Single Domain">
+    **Configuration**: Omit `cookiesDomain` or set to specific domain
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      cookiesDomain: 'app.example.com'
+    });
+    ```
+    
+    **Accessibility**:
+    - Cookies available **only** on `app.example.com`
+    - Not shared with subdomains or parent domain
+    
+    **Use case**: Single application on one domain
+  </Tab>
+  
+  <Tab title="Subdomain Sharing">
+    **Configuration**: Use leading dot
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      cookiesDomain: '.example.com'
+    });
+    ```
+    
+    **Accessibility**:
+    - Cookies available on `example.com`
+    - Shared across **all subdomains**: `app.example.com`, `www.example.com`, `api.example.com`
+    
+    **Use case**: Multi-subdomain applications, shared authentication
+  </Tab>
+  
+  <Tab title="No Configuration">
+    **Configuration**: Omit parameter
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      partnerName: 'yourpartner'
+      // No cookiesDomain specified
+    });
+    ```
+    
+    **Accessibility**:
+    - Cookies scoped to current hostname
+    - Uses browser default domain behavior
+    
+    **Use case**: Simple single-domain applications
+  </Tab>
+</Tabs>
+
+### Common Domain Patterns
+
+<CodeGroup>
+```javascript Production & Staging
+// Share cookies across environments
+const domain = window.location.hostname.includes('staging')
+  ? '.staging.example.com'
+  : '.example.com';
+
+const zenfi = new ZenfiSDK({
+  cookiesDomain: domain
+});
+```
+
+```javascript Multi-Region
+// Region-specific cookies
+const region = detectUserRegion();
+const domain = `.${region}.example.com`;
+
+const zenfi = new ZenfiSDK({
+  cookiesDomain: domain
+});
+```
+
+```javascript Development vs Production
+const zenfi = new ZenfiSDK({
+  cookiesDomain: process.env.NODE_ENV === 'production'
+    ? '.example.com'
+    : undefined // Use default in dev
+});
+```
+</CodeGroup>
+
+## Cookie Operations
+
+### Reading Cookies
+
+The SDK automatically reads cookies when accessing properties:
+
+```javascript
+// Get ID (reads from zenfi_id cookie if not in memory)
+const id = zenfi.id;
+
+// Get token (reads from zenfi_token cookie if not in memory)
+const token = zenfi.token;
+```
+
+**Implementation** (src/index.js:34-36, 48-50):
+```javascript
+get id() {
+  if (!this._id) this._id = this.cookies.getId();
+  return this._id;
+}
+
+get token() {
+  if (!this._token) this._token = this.cookies.getToken();
+  return this._token;
+}
+```
+
+### Writing Cookies
+
+Cookies are automatically updated when setting values:
+
+```javascript
+// Set ID (writes to zenfi_id cookie)
+zenfi.id = 'lead-12345';
+
+// Set token (writes to zenfi_token cookie)
+zenfi.token = 'auth-token-abc123';
+```
+
+**Implementation** (src/index.js:29-32, 39-46):
+```javascript
+set id(id) {
+  this._id = id || null;
+  this.cookies.setId(this._id);
+}
+
+set token(token) {
+  this._token = token || null;
+  if (!this._token) {
+    this.cookies.removeToken();
+    return;
+  }
+  this.cookies.setToken(this._token);
+}
+```
+
+### Removing Cookies
+
+Clear the token (removes `zenfi_token` cookie):
+
+```javascript
+zenfi.token = null;
+```
+
+**Implementation** (src/cookies.js:19-22, 32):
+```javascript
+const removeCookie = (name) => Cookies.remove(name, {
+  domain,
+  path: '/'
+});
+
+const removeToken = () => removeCookie(COOKIE_NAMES.token);
+```
+
+<Warning>
+The `zenfi_id` cookie is never automatically removed. It persists for the full 365-day lifetime to maintain user identity.
+</Warning>
+
+## URL Parameter Integration
+
+The SDK automatically handles URL parameters and syncs them with cookies:
+
+### Automatic Extraction (src/index.js:18-27)
+
+On initialization, the SDK checks for URL parameters:
+
+```javascript
+// URL: https://example.com?zfid=lead123&zftoken=abc456
+
+const zenfi = new ZenfiSDK();
+// Automatically extracts:
+// - zfid -> stored in zenfi_id cookie
+// - zftoken -> stored in zenfi_token cookie
+```
+
+**Parameter names** (src/url.js:1-4):
+- `zfid` - Zenfi ID parameter
+- `zftoken` - Zenfi token parameter
+
+### Token Cleanup
+
+For security, the token parameter is removed from the URL after extraction:
+
+```javascript
+// Before: https://example.com/page?zfid=lead123&zftoken=abc456
+// After:  https://example.com/page?zfid=lead123
+```
+
+**Implementation** (src/index.js:22-26, src/url.js:15-22):
+```javascript
+if (token) {
+  this.token = token;
+  history.replaceState(null, null, removeUrlParams(location.href));
+}
+```
+
+<Info>
+The ID parameter (`zfid`) is **not** removed from the URL, allowing it to persist through page shares and bookmarks.
+</Info>
+
+## Cross-Domain Tracking
+
+### Scenario: Multiple Domains
+
+When users navigate between domains, use URL parameters:
+
+```javascript
+// On domain1.com
+const zenfi = new ZenfiSDK({
+  cookiesDomain: '.domain1.com'
+});
+
+// When linking to domain2.com
+const url = `https://domain2.com?zfid=${zenfi.id}&zftoken=${zenfi.token}`;
+window.location.href = url;
+```
+
+```javascript
+// On domain2.com
+const zenfi = new ZenfiSDK({
+  cookiesDomain: '.domain2.com'
+});
+// Automatically extracts zfid and zftoken from URL
+// Sets cookies for domain2.com
+```
+
+### Scenario: Subdomain to Parent
+
+Share cookies across subdomains:
+
+```javascript
+// On app.example.com
+const zenfi = new ZenfiSDK({
+  cookiesDomain: '.example.com' // Share with all subdomains
+});
+
+// Cookies accessible on:
+// - app.example.com
+// - www.example.com
+// - checkout.example.com
+```
+
+## Advanced Cookie Management
+
+### Custom Cookie Operations
+
+Access the underlying cookie API:
+
+```javascript
+const zenfi = new ZenfiSDK({
+  cookiesDomain: '.example.com'
+});
+
+// Set custom cookie
+zenfi.cookies.set('custom_key', 'custom_value', 30); // 30 days
+
+// Get custom cookie
+const value = zenfi.cookies.get('custom_key');
+```
+
+**Available methods** (src/cookies.js:34-42):
+- `getId()` - Get zenfi_id cookie
+- `setId(value)` - Set zenfi_id cookie
+- `getToken()` - Get zenfi_token cookie
+- `setToken(value)` - Set zenfi_token cookie
+- `removeToken()` - Remove zenfi_token cookie
+- `get(name)` - Get any cookie by name
+- `set(name, value, expires)` - Set any cookie
+
+### Cookie Debugging
+
+Inspect current cookie state:
+
+```javascript
+console.log('ID Cookie:', zenfi.cookies.getId());
+console.log('Token Cookie:', zenfi.cookies.getToken());
+console.log('ID (with fallback):', zenfi.id);
+console.log('Token (with fallback):', zenfi.token);
+```
+
+### Manual Cookie Sync
+
+Force cookie updates:
+
+```javascript
+// Force write to cookie
+zenfi.id = zenfi.id; // Triggers setter, updates cookie
+zenfi.token = zenfi.token;
+```
+
+## Security Considerations
+
+<AccordionGroup>
+  <Accordion title="HTTPS Requirement">
+    Cookies are set with `secure: true`, requiring HTTPS:
+    
+    **Production**: Must use HTTPS, cookies will not work over HTTP
+    
+    **Development**: Use `localhost` (treated as secure) or configure local HTTPS
+    
+    ```javascript
+    // Development workaround if needed:
+    // Note: Requires modifying the SDK source
+    const isDev = window.location.hostname === 'localhost';
+    Cookies.set(name, value, {
+      domain,
+      expires: 365,
+      path: '/',
+      secure: !isDev // Disable secure flag in dev
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Domain Scope Risks">
+    Be cautious with broad domain configurations:
+    
+    **Risk**: `.com` domain
+    ```javascript
+    // NEVER DO THIS
+    const zenfi = new ZenfiSDK({
+      cookiesDomain: '.com' // Too broad!
+    });
+    ```
+    
+    **Safe**: Specific domain
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      cookiesDomain: '.example.com' // Scoped to your domain
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Token Exposure">
+    The SDK automatically removes tokens from URLs to prevent:
+    - Browser history exposure
+    - Referrer header leakage
+    - Accidental sharing of authenticated URLs
+    
+    **Never** manually pass tokens in URLs except during cross-domain handoff.
+  </Accordion>
+
+  <Accordion title="Cookie Lifetime">
+    Cookies persist for 365 days. Consider:
+    - User privacy regulations (GDPR, CCPA)
+    - Token rotation policies
+    - Session management requirements
+    
+    **Manual cleanup** if needed:
+    ```javascript
+    zenfi.token = null; // Removes token cookie
+    document.cookie = 'zenfi_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<Steps>
+  <Step title="Cookies Not Persisting">
+    **Check HTTPS**: Verify site is using HTTPS
+    ```javascript
+    console.log('Protocol:', window.location.protocol);
+    // Should output: "https:"
+    ```
+    
+    **Check browser settings**: Ensure cookies are not blocked
+  </Step>
+  
+  <Step title="Cookies Not Shared Across Subdomains">
+    **Verify domain configuration**:
+    ```javascript
+    console.log('Cookie domain:', zenfi.cookies);
+    ```
+    
+    **Ensure leading dot**:
+    ```javascript
+    // Correct
+    cookiesDomain: '.example.com'
+    
+    // Incorrect (no leading dot)
+    cookiesDomain: 'example.com'
+    ```
+  </Step>
+  
+  <Step title="Inspect Cookies">
+    Open DevTools → Application → Cookies
+    
+    Look for:
+    - `zenfi_id`
+    - `zenfi_token`
+    
+    Verify:
+    - Domain matches configuration
+    - Secure flag is set
+    - Expiration is ~365 days
+  </Step>
+  
+  <Step title="Clear Cookies Manually">
+    ```javascript
+    // Clear all Zenfi cookies
+    document.cookie = 'zenfi_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.example.com';
+    document.cookie = 'zenfi_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.example.com';
+    ```
+  </Step>
+</Steps>
+
+<Card title="Back to Concepts" icon="arrow-left" href="/concepts/authentication">
+  Return to Authentication documentation
+</Card>

@@ -1,0 +1,101 @@
+---
+title: 'trackAbortion()'
+description: 'Track when users are rejected or exit your funnel'
+---
+
+## Overview
+
+Sends an abortion event to the Zenfi API when a user is rejected or cannot move forward in the funnel. This method is useful for tracking negative outcomes such as declined offers, failed validations, or user exits.
+
+## Method Signature
+
+```javascript
+zenfi.trackAbortion(name, properties)
+```
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  A descriptive name for the abortion event being tracked. Examples: `'rejected'`, `'declinedOffer'`, `'failedValidation'`, `'exitedFunnel'`.
+</ParamField>
+
+<ParamField path="properties" type="object">
+  An object containing any additional data related to the abortion event. This can include rejection reasons, error codes, or any other relevant metadata.
+</ParamField>
+
+## Return Value
+
+Returns a Promise that resolves when the event is sent to the Zenfi API. Returns `null` if no token is available.
+
+## Behavior
+
+- Requires a valid token to send events (obtained from URL parameters or cookies)
+- Requires `partnerName` to be set during SDK initialization
+- Sends a POST request to `https://api.zenfi.mx/webhooks/leads/:partner/aborted`
+- Includes the Zenfi ID, event name, and custom properties in the request payload
+- Throws an error if `partnerName` was not provided during initialization
+
+## Examples
+
+### Basic Abortion Tracking
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Track a simple rejection event
+zenfi.trackAbortion('rejected');
+```
+
+### Abortion with Reason
+
+```javascript
+// Track a declined offer with reason
+zenfi.trackAbortion('declinedOffer', {
+  reason: 'User got a better interest rate elsewhere',
+  competitorRate: 5.2,
+  ourRate: 6.5
+});
+```
+
+### Failed Validation Tracking
+
+```javascript
+// Track when a user fails credit validation
+zenfi.trackAbortion('failedValidation', {
+  validationType: 'creditScore',
+  requiredScore: 650,
+  actualScore: 580,
+  timestamp: new Date().toISOString()
+});
+```
+
+### User Exit Tracking
+
+```javascript
+// Track when a user abandons the application
+zenfi.trackAbortion('exitedFunnel', {
+  step: 'personal-info',
+  completionPercentage: 35,
+  timeSpent: 120 // seconds
+});
+```
+
+### Rejection with Error Code
+
+```javascript
+// Track rejection with specific error information
+zenfi.trackAbortion('applicationRejected', {
+  errorCode: 'INSUFFICIENT_INCOME',
+  requiredIncome: 30000,
+  providedIncome: 22000,
+  rejectionCategory: 'automatic'
+});
+```
+
+## Related Methods
+
+- [trackConversion()](/api/track-conversion) - Track positive user progress through the funnel
+- [trackPageView()](/api/track-pageview) - Track page views
+- [initPageViewsTracking()](/api/init-pageviews-tracking) - Automatically track all page views

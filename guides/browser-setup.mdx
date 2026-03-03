@@ -1,0 +1,196 @@
+---
+title: 'Browser Setup'
+description: 'Get started with Zenfi SDK using CDN for browser environments'
+---
+
+## CDN Installation
+
+Add the Zenfi SDK script to your HTML page using the CDN:
+
+<CodeGroup>
+
+```html Latest Version
+<!-- Latest version -->
+<script src="https://cdn.jsdelivr.net/gh/zenfi/js-sdk@main/dist/index.js" type="text/javascript"></script>
+```
+
+```html Specific Version
+<!-- Specify a version for production stability -->
+<script src="https://cdn.jsdelivr.net/gh/zenfi/js-sdk@v1.3.3/dist/index.js" type="text/javascript"></script>
+```
+
+</CodeGroup>
+
+<Warning>
+  For production environments, always specify a version number instead of using `@main` to ensure stability and prevent unexpected breaking changes.
+</Warning>
+
+## Quick Start
+
+<Steps>
+  <Step title="Include the script">
+    Add the CDN script to your HTML `<head>` or before the closing `</body>` tag:
+
+    ```html
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>My Application</title>
+        <script src="https://cdn.jsdelivr.net/gh/zenfi/js-sdk@v1.3.3/dist/index.js" type="text/javascript"></script>
+      </head>
+      <body>
+        <!-- Your form elements -->
+      </body>
+    </html>
+    ```
+  </Step>
+
+  <Step title="Initialize the SDK">
+    The script exports a global variable named `ZenfiSDK`. Initialize it after the script loads:
+
+    ```html
+    <script type="text/javascript">
+      var zenfi = new ZenfiSDK({
+        partnerName: 'credifast',
+        cookiesDomain: 'credifast.com',
+        targets: [
+          {
+            dataKey: 'name',
+            selector: '#nameInput',
+            strategy: 'value',
+          },
+          {
+            dataKey: 'email',
+            selector: '#emailInput',
+            strategy: 'value',
+          },
+        ],
+      });
+    </script>
+    ```
+  </Step>
+
+  <Step title="Auto-fill targets">
+    Call `fillTargets()` to automatically populate your form:
+
+    ```html
+    <script type="text/javascript">
+      zenfi.fillTargets();
+    </script>
+    ```
+  </Step>
+</Steps>
+
+## Complete Example
+
+Here's a complete HTML page with Zenfi SDK integration:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenfi SDK Example</title>
+    <script src="https://cdn.jsdelivr.net/gh/zenfi/js-sdk@v1.3.3/dist/index.js" type="text/javascript"></script>
+  </head>
+  <body>
+    <h1>Lead Registration Form</h1>
+    
+    <form id="leadForm">
+      <div>
+        <label for="nameInput">Name:</label>
+        <input type="text" id="nameInput" name="name" />
+      </div>
+      
+      <div>
+        <label for="emailInput">Email:</label>
+        <input type="email" id="emailInput" name="email" />
+      </div>
+      
+      <button type="submit">Submit</button>
+    </form>
+
+    <script type="text/javascript">
+      // Initialize Zenfi SDK
+      var zenfi = new ZenfiSDK({
+        partnerName: 'credifast',
+        cookiesDomain: 'credifast.com',
+        targets: [
+          {
+            dataKey: 'name',
+            selector: '#nameInput',
+            strategy: 'value',
+          },
+          {
+            dataKey: 'email',
+            selector: '#emailInput',
+            strategy: 'value',
+          },
+        ],
+      });
+      
+      // Auto-fill form inputs
+      zenfi.fillTargets();
+      
+      // Track page views automatically
+      zenfi.initPageViewsTracking();
+      
+      // Track form submission
+      document.getElementById('leadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        zenfi.trackConversion('formSubmit', {
+          formName: 'leadForm',
+        });
+      });
+    </script>
+  </body>
+</html>
+```
+
+## Using with Module Bundlers
+
+If you're using a module bundler like Webpack or Vite in the browser, you can install via npm instead:
+
+```bash
+npm install --save zenfi-sdk
+```
+
+Then import it in your JavaScript:
+
+```javascript
+import ZenfiSDK from 'zenfi-sdk';
+
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com',
+  targets: [
+    // your targets configuration
+  ],
+});
+
+zenfi.fillTargets();
+```
+
+<Tip>
+  The SDK automatically handles URL parameters (`id` and `token`) when a user clicks on a Zenfi tracking link. These parameters are stored in cookies and removed from the URL for a clean user experience.
+</Tip>
+
+## Browser Compatibility
+
+The Zenfi SDK works in all modern browsers that support:
+- `document.querySelector()`
+- `window.location` API
+- `fetch()` API
+- ES6 classes
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Target Configuration" icon="bullseye" href="/guides/target-configuration">
+    Configure form autofill with different strategies
+  </Card>
+  <Card title="Tracking Events" icon="chart-line" href="/guides/tracking-events">
+    Track user interactions and conversions
+  </Card>
+</CardGroup>

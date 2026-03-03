@@ -1,0 +1,79 @@
+---
+title: Installation
+description: Install Zenfi JavaScript SDK via npm or browser CDN
+---
+
+# Installation
+
+Zenfi SDK can be installed in Node.js projects via npm or used directly in the browser via CDN.
+
+## Node.js Installation
+
+Install the SDK using npm or yarn:
+
+<CodeGroup>
+
+```bash npm
+npm install --save @zenfi/js-sdk
+```
+
+```bash yarn
+yarn add @zenfi/js-sdk
+```
+
+</CodeGroup>
+
+Then import it in your JavaScript code:
+
+```javascript
+const ZenfiSDK = require('@zenfi/js-sdk');
+// or ES6
+import ZenfiSDK from '@zenfi/js-sdk';
+```
+
+## Browser Installation
+
+For browser-based applications, add the SDK script tag to your HTML:
+
+<CodeGroup>
+
+```html Latest Version
+<!-- Latest version -->
+<script src="https://cdn.jsdelivr.net/gh/zenfi/js-sdk@main/dist/index.js" type="text/javascript"></script>
+```
+
+```html Specific Version
+<!-- Or specify a version -->
+<script src="https://cdn.jsdelivr.net/gh/zenfi/js-sdk@v1.3.3/dist/index.js" type="text/javascript"></script>
+```
+
+</CodeGroup>
+
+The script exports a global variable named `ZenfiSDK` that you can use directly:
+
+```html
+<script type="text/javascript">
+  var zenfi = new ZenfiSDK({
+    partnerName: 'your-partner-name',
+    cookiesDomain: 'yourdomain.com'
+  });
+  zenfi.fillTargets();
+</script>
+```
+
+<Note>
+  When using the browser CDN, make sure to initialize the SDK after the DOM is fully loaded to ensure all target elements are available.
+</Note>
+
+## Version Information
+
+- **Current Version**: 1.3.3
+- **Package Name**: `@zenfi/js-sdk`
+- **License**: MIT
+- **Repository**: [github.com/zenfi/js-sdk](https://github.com/zenfi/js-sdk)
+
+## Next Steps
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Learn how to configure and use the SDK in your application
+</Card>

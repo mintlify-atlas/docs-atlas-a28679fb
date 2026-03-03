@@ -1,0 +1,90 @@
+---
+title: 'trackConversion()'
+description: 'Send conversion events to track user progress through your funnel'
+---
+
+## Overview
+
+Sends a conversion event to the Zenfi API when a user moves forward in the funnel. This method is useful for tracking positive user actions such as form submissions, button clicks, cart additions, or any milestone that indicates progress toward a goal.
+
+## Method Signature
+
+```javascript
+zenfi.trackConversion(name, properties)
+```
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  A descriptive name for the event being tracked. Examples: `'register'`, `'click'`, `'addToCart'`, `'formSubmit'`.
+</ParamField>
+
+<ParamField path="properties" type="object">
+  An object containing any additional data related to the event. This can include any custom metadata relevant to your tracking needs.
+</ParamField>
+
+## Return Value
+
+Returns a Promise that resolves when the event is sent to the Zenfi API. Returns `null` if no token is available.
+
+## Behavior
+
+- Requires a valid token to send events (obtained from URL parameters or cookies)
+- Requires `partnerName` to be set during SDK initialization
+- Sends a POST request to `https://api.zenfi.mx/webhooks/leads/:partner/converted`
+- Includes the Zenfi ID, event name, and custom properties in the request payload
+- Throws an error if `partnerName` was not provided during initialization
+
+## Examples
+
+### Basic Conversion Tracking
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Track a simple registration event
+zenfi.trackConversion('register');
+```
+
+### Conversion with Properties
+
+```javascript
+// Track an add to cart event with product details
+zenfi.trackConversion('addToCart', {
+  price: 100,
+  amount: 2,
+  productId: 'PROD-123',
+  currency: 'USD'
+});
+```
+
+### Form Submission Tracking
+
+```javascript
+// Track a form submission with form data
+zenfi.trackConversion('formSubmit', {
+  formId: 'loan-application',
+  loanAmount: 5000,
+  loanTerm: 12
+});
+```
+
+### Button Click Tracking
+
+```javascript
+const applyButton = document.querySelector('#apply-btn');
+applyButton.addEventListener('click', () => {
+  zenfi.trackConversion('clickApply', {
+    buttonLocation: 'hero-section',
+    timestamp: new Date().toISOString()
+  });
+});
+```
+
+## Related Methods
+
+- [trackAbortion()](/api/track-abortion) - Track when users are rejected or exit the funnel
+- [trackPageView()](/api/track-pageview) - Track page views as conversion events
+- [initPageViewsTracking()](/api/init-pageviews-tracking) - Automatically track all page views

@@ -1,0 +1,171 @@
+---
+title: 'initPageViewsTracking()'
+description: 'Automatically track all page views and URL changes'
+---
+
+## Overview
+
+Initializes automatic page view tracking by setting up listeners for URL changes. This method tracks the initial page load and then listens for all subsequent navigation events, including `pushState`, `replaceState`, and `popstate` events, making it ideal for both traditional multi-page applications and single-page applications (SPAs).
+
+## Method Signature
+
+```javascript
+zenfi.initPageViewsTracking()
+```
+
+## Parameters
+
+This method takes no parameters.
+
+## Return Value
+
+This method does not return a value (returns `undefined`).
+
+## Behavior
+
+- Immediately tracks the current page view upon initialization
+- Sets up a custom `locationchange` event listener
+- Patches `window.history.pushState` to dispatch `locationchange` events
+- Patches `window.history.replaceState` to dispatch `locationchange` events
+- Listens to native `popstate` events (browser back/forward navigation)
+- Automatically calls `trackPageView()` on every URL change
+- Requires a valid token and `partnerName` to send events
+
+## How It Works
+
+The method implements automatic page view tracking through the following mechanism:
+
+1. **Initial Page View**: Tracks the current page immediately when called
+2. **History API Patching**: Intercepts `pushState` and `replaceState` to detect programmatic navigation
+3. **Browser Navigation**: Listens to `popstate` events for back/forward button clicks
+4. **Custom Event**: Dispatches a custom `locationchange` event on all navigation types
+5. **Automatic Tracking**: Calls `trackPageView()` whenever the location changes
+
+## Examples
+
+### Basic Setup
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Start automatic page view tracking
+zenfi.initPageViewsTracking();
+
+// Now all page views will be tracked automatically
+// including SPA navigation, back/forward clicks, etc.
+```
+
+### With Initialization
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com'
+});
+
+// Initialize automatic tracking on page load
+window.addEventListener('load', () => {
+  zenfi.initPageViewsTracking();
+});
+```
+
+### Single Page Application (SPA)
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+// Enable automatic tracking for SPA
+zenfi.initPageViewsTracking();
+
+// These navigations will be tracked automatically:
+history.pushState({}, '', '/products');
+history.pushState({}, '', '/cart');
+history.replaceState({}, '', '/checkout');
+
+// Browser back/forward navigation is also tracked
+```
+
+### React Application Example
+
+```javascript
+import { useEffect } from 'react';
+import ZenfiSDK from 'zenfi-sdk';
+
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+function App() {
+  useEffect(() => {
+    // Initialize tracking once when app mounts
+    zenfi.initPageViewsTracking();
+  }, []);
+
+  return (
+    <div className="App">
+      {/* Your app content */}
+    </div>
+  );
+}
+
+export default App;
+```
+
+### Next.js Application Example
+
+```javascript
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import ZenfiSDK from 'zenfi-sdk';
+
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast'
+});
+
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Initialize Zenfi page view tracking
+    zenfi.initPageViewsTracking();
+  }, []);
+
+  return <Component {...pageProps} />;
+}
+
+export default MyApp;
+```
+
+## Events Tracked
+
+The method automatically tracks page views for:
+
+- **Initial page load**: When `initPageViewsTracking()` is first called
+- **SPA navigation**: When using `history.pushState()` or `history.replaceState()`
+- **Browser navigation**: When using browser back/forward buttons (triggers `popstate`)
+- **Hash changes**: When the URL hash changes (via `popstate`)
+
+## Important Notes
+
+- Call this method only once during your application's initialization
+- The method modifies the global `window.history` object to intercept navigation
+- All tracked page views are sent as conversion events with the name "PageView"
+- Each page view includes full URL metadata (href, pathname, search, hash, protocol, hostname)
+- Requires both a valid token and `partnerName` to function properly
+
+## When to Use
+
+- **Single-page applications**: Automatically track client-side routing
+- **Multi-page applications**: Track all page loads and navigation
+- **Hybrid applications**: Track both server-rendered and client-side navigation
+- **Analytics setup**: Set up comprehensive page view analytics with minimal code
+
+## Related Methods
+
+- [trackPageView()](/api/track-pageview) - Manually track a single page view
+- [trackConversion()](/api/track-conversion) - Track custom conversion events
+- [trackAbortion()](/api/track-abortion) - Track abortion events

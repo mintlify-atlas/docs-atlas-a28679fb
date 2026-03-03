@@ -1,0 +1,147 @@
+---
+title: 'Node.js Setup'
+description: 'Get started with Zenfi SDK in Node.js environments'
+---
+
+## Installation
+
+Install the Zenfi SDK using npm or yarn:
+
+<CodeGroup>
+
+```bash npm
+npm install --save zenfi-sdk
+```
+
+```bash yarn
+yarn add zenfi-sdk
+```
+
+</CodeGroup>
+
+## Basic Setup
+
+<Steps>
+  <Step title="Import the SDK">
+    Import the ZenfiSDK class into your project:
+
+    ```javascript
+    const ZenfiSDK = require('zenfi-sdk');
+    ```
+
+    Or using ES6 imports:
+
+    ```javascript
+    import ZenfiSDK from 'zenfi-sdk';
+    ```
+  </Step>
+
+  <Step title="Initialize the SDK">
+    Create a new instance with your partner configuration:
+
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      partnerName: 'credifast',
+      cookiesDomain: 'credifast.com',
+      targets: [
+        {
+          dataKey: 'name',
+          strategy: 'value',
+          selector: '#nameInput',
+        },
+        {
+          dataKey: 'email',
+          strategy: 'value',
+          selector: '#emailInput',
+        },
+      ],
+    });
+    ```
+  </Step>
+
+  <Step title="Use SDK features">
+    Start using the SDK to fetch data and fill targets:
+
+    ```javascript
+    // Fetch lead data
+    await zenfi.fetchData();
+    console.log(zenfi.leadInfo);
+
+    // Auto-fill form inputs
+    await zenfi.fillTargets();
+
+    // Track events
+    zenfi.trackConversion('register', { step: 1 });
+    ```
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### Required Parameters
+
+<ParamField path="partnerName" type="string" required>
+  The name of the platform which implements this code. This parameter is required to send events to the Zenfi API.
+</ParamField>
+
+### Optional Parameters
+
+<ParamField path="cookiesDomain" type="string">
+  The [domain space](https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie) where the cookies will be available. When this value is empty, cookies will be only accessible in the current domain / subdomain.
+</ParamField>
+
+<ParamField path="targets" type="array">
+  The list of HTML elements and their configuration to be filled. See the [Target Configuration](/guides/target-configuration) guide for detailed information.
+</ParamField>
+
+## Complete Example
+
+```javascript
+const ZenfiSDK = require('zenfi-sdk');
+
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com',
+  targets: [
+    {
+      dataKey: 'name',
+      strategy: 'value',
+      selector: '#nameInput',
+    },
+    {
+      dataKey: 'email',
+      strategy: 'value',
+      selector: ({ dataKey }) => `#${dataKey}Input`,
+      beforeAction: () => console.log('before filling info'),
+      afterAction: ({ element }) => element.classList.add('changed'),
+    },
+  ],
+});
+
+// Fetch and fill user data
+await zenfi.fillTargets();
+
+// Track page views automatically
+zenfi.initPageViewsTracking();
+
+// Track custom events
+zenfi.trackConversion('addToCart', {
+  price: 100,
+  amount: 2,
+});
+```
+
+<Note>
+  The SDK automatically handles URL parameters (`id` and `token`) and stores them in cookies for persistent session management.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Target Configuration" icon="bullseye" href="/guides/target-configuration">
+    Learn how to configure form autofill targets
+  </Card>
+  <Card title="Tracking Events" icon="chart-line" href="/guides/tracking-events">
+    Track conversions, abortions, and page views
+  </Card>
+</CardGroup>

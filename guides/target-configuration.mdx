@@ -1,0 +1,336 @@
+---
+title: 'Target Configuration'
+description: 'Configure form autofill targets with various strategies and selectors'
+---
+
+## Overview
+
+Targets define how the Zenfi SDK auto-fills your form elements with lead data. Each target specifies:
+- Which data field to use (`dataKey`)
+- How to find the element (`selector`)
+- How to fill it (`strategy`)
+- Optional hooks for custom behavior
+
+## Basic Target Configuration
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'value',
+    },
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value',
+    },
+  ],
+});
+```
+
+## Target Parameters
+
+### dataKey
+
+<ParamField path="dataKey" type="string" required>
+  The name of the key in the `leadInfo` object which contains the information to be filled.
+</ParamField>
+
+The `dataKey` corresponds to fields returned by the Zenfi API:
+
+```javascript
+// Example leadInfo object
+{
+  name: 'Chewbacca',
+  email: 'chewy@lucasfilm.com',
+  phone: '+1234567890',
+  // ... other fields
+}
+```
+
+### selector
+
+<ParamField path="selector" type="string | function" required>
+  The CSS selector to find the element in the DOM. If a function is passed, it will receive an object with `{ dataKey, strategy, value }` as parameters and must return a string with the CSS selector.
+</ParamField>
+
+<Tabs>
+  <Tab title="Static Selector">
+    Use a CSS selector string to target a specific element:
+
+    ```javascript
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'value',
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Dynamic Selector">
+    Use a function to generate the selector dynamically:
+
+    ```javascript
+    {
+      dataKey: 'email',
+      selector: ({ dataKey }) => `#${dataKey}Input`,
+      strategy: 'value',
+    }
+    // This will select '#emailInput'
+    ```
+
+    The function receives:
+    - `dataKey`: The data key name
+    - `strategy`: The fill strategy
+    - `value`: The actual value to be filled
+  </Tab>
+</Tabs>
+
+### strategy
+
+<ParamField path="strategy" type="enum" default="value">
+  Indicates the type of strategy to fill the DOM element. Possible values are:
+  - `value`: Sets the value property of an input
+  - `nativeValue`: Uses native value setter (for React apps)
+  - `text`: Puts the content inside the HTML tag as text
+  - `click`: Triggers a click on the DOM element
+</ParamField>
+
+<Tabs>
+  <Tab title="value">
+    Sets the `value` property of an input element (default strategy):
+
+    ```javascript
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'value', // Standard input fields
+    }
+    ```
+
+    <Note>
+      This is the most common strategy for `<input>`, `<textarea>`, and `<select>` elements.
+    </Note>
+  </Tab>
+
+  <Tab title="nativeValue">
+    Uses the native value setter, essential for React applications:
+
+    ```javascript
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'nativeValue', // For React forms
+    }
+    ```
+
+    <Tip>
+      Use `nativeValue` when working with React to properly trigger onChange events. This strategy uses the underlying prototype value setter as described in [this Stack Overflow solution](https://stackoverflow.com/questions/40894637/how-to-programmatically-fill-input-elements-built-with-react/70848568).
+    </Tip>
+  </Tab>
+
+  <Tab title="text">
+    Sets the `innerText` of an element (useful for `<div>`, `<span>`, etc.):
+
+    ```javascript
+    {
+      dataKey: 'name',
+      selector: '#welcomeMessage',
+      strategy: 'text', // For div, span, p, etc.
+    }
+    // Sets: <div id="welcomeMessage">Chewbacca</div>
+    ```
+  </Tab>
+
+  <Tab title="click">
+    Triggers a click event on the element:
+
+    ```javascript
+    {
+      dataKey: 'acceptTerms',
+      selector: '#termsCheckbox',
+      strategy: 'click', // For checkboxes, buttons
+    }
+    ```
+
+    <Warning>
+      When using the `click` strategy, the `value` parameter is ignored. The click is triggered regardless of the value.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Lifecycle Hooks
+
+### beforeAction
+
+<ParamField path="beforeAction" type="function">
+  An optional function that is executed before the target is filled. It receives an object with `{ selector, strategy, value }` properties.
+</ParamField>
+
+```javascript
+{
+  dataKey: 'email',
+  selector: '#emailInput',
+  strategy: 'value',
+  beforeAction: ({ selector, strategy, value }) => {
+    console.log('About to fill', selector, 'with', value);
+    // Perform any setup needed
+  },
+}
+```
+
+<Note>
+  The `beforeAction` hook can be used to show loading states, prepare the DOM, or log debugging information.
+</Note>
+
+### afterAction
+
+<ParamField path="afterAction" type="function">
+  An optional function that is executed after the target is filled. It receives an object with `{ element, selector, strategy, value }` properties, where `element` is the DOM node being filled.
+</ParamField>
+
+```javascript
+{
+  dataKey: 'email',
+  selector: '#emailInput',
+  strategy: 'value',
+  afterAction: ({ element, selector, strategy, value }) => {
+    element.classList.add('changed');
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  },
+}
+```
+
+<Tip>
+  Use `afterAction` to trigger validation, update UI states, or dispatch custom events after filling.
+</Tip>
+
+## Advanced Examples
+
+### React Form with Validation
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'nativeValue',
+      afterAction: ({ element }) => {
+        // Trigger React onChange event
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+    },
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'nativeValue',
+      afterAction: ({ element }) => {
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('blur', { bubbles: true }));
+      },
+    },
+  ],
+});
+```
+
+### Dynamic Selectors with Namespacing
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  targets: [
+    {
+      dataKey: 'name',
+      selector: ({ dataKey }) => `#form_${dataKey}`,
+      strategy: 'value',
+    },
+    {
+      dataKey: 'email',
+      selector: ({ dataKey }) => `#form_${dataKey}`,
+      strategy: 'value',
+    },
+  ],
+});
+// Selects '#form_name' and '#form_email'
+```
+
+### Visual Feedback on Autofill
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  targets: [
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value',
+      beforeAction: ({ selector }) => {
+        document.querySelector(selector).classList.add('loading');
+      },
+      afterAction: ({ element }) => {
+        element.classList.remove('loading');
+        element.classList.add('autofilled');
+        
+        // Remove highlight after 2 seconds
+        setTimeout(() => {
+          element.classList.remove('autofilled');
+        }, 2000);
+      },
+    },
+  ],
+});
+```
+
+### Conditional Filling
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  targets: [
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value',
+      beforeAction: ({ selector, value }) => {
+        const element = document.querySelector(selector);
+        // Don't fill if user already entered data
+        if (element && element.value) {
+          return false; // Skip filling
+        }
+      },
+    },
+  ],
+});
+```
+
+## How It Works
+
+When you call `fillTargets()`, the SDK:
+
+1. Fetches lead data if not already available
+2. Iterates through each target configuration
+3. Checks if the `dataKey` exists in `leadInfo`
+4. Calls `beforeAction` hook if provided
+5. Finds the element using the selector
+6. Applies the value using the specified strategy
+7. Calls `afterAction` hook if provided
+
+<Note>
+  If a value is `null` or `undefined` in the `leadInfo` object, that target will be skipped automatically.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Tracking Events" icon="chart-line" href="/guides/tracking-events">
+    Learn how to track conversions and user interactions
+  </Card>
+  <Card title="Constructor API" icon="code" href="/api/constructor">
+    View complete constructor documentation
+  </Card>
+</CardGroup>

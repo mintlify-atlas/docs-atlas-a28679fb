@@ -1,0 +1,326 @@
+---
+title: 'Form Autofill'
+description: 'Learn how the Zenfi SDK automatically fills form fields with lead data'
+icon: 'input-text'
+---
+
+## Overview
+
+The Zenfi SDK provides powerful form autofill capabilities that automatically populate form fields with lead data. This reduces friction in the user experience and increases conversion rates by eliminating manual data entry.
+
+## How It Works
+
+The autofill mechanism follows a three-step process:
+
+1. **Fetch Lead Data** - Retrieves lead information from the Zenfi API using the authentication token
+2. **Match Data Keys** - Maps lead data fields to target configurations
+3. **Fill Elements** - Populates DOM elements using the specified strategy
+
+## Configuration
+
+### Basic Setup
+
+Define targets during SDK initialization:
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#fullName',
+      strategy: 'value'
+    },
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value'
+    }
+  ]
+});
+
+// Trigger autofill
+await zenfi.fillTargets();
+```
+
+### Target Configuration Options
+
+<ParamField path="dataKey" type="string" required>
+  The key in the `leadInfo` object containing the data to fill (e.g., `name`, `email`, `phone`)
+</ParamField>
+
+<ParamField path="selector" type="string | function" required>
+  CSS selector to locate the DOM element. Can be a string or a function that returns a selector.
+  
+  **Function signature**: `({ dataKey, strategy, value }) => string`
+</ParamField>
+
+<ParamField path="strategy" type="enum" default="value">
+  The method used to populate the element:
+  - `value` - Sets the `.value` property (standard inputs)
+  - `nativeValue` - Uses native value setter (React/controlled inputs)
+  - `text` - Sets the `.innerText` property (for divs/spans)
+  - `click` - Triggers a click event on the element
+</ParamField>
+
+<ParamField path="beforeAction" type="function">
+  Callback executed before filling. Receives `{ selector, strategy, value, element }`
+</ParamField>
+
+<ParamField path="afterAction" type="function">
+  Callback executed after filling. Receives `{ selector, strategy, value, element }`
+</ParamField>
+
+## Fill Strategies
+
+### Value Strategy
+
+The default strategy for standard HTML inputs:
+
+```javascript
+{
+  dataKey: 'email',
+  selector: '#email',
+  strategy: 'value' // Sets element.value
+}
+```
+
+**Use for**: `<input>`, `<textarea>`, `<select>` elements
+
+### Native Value Strategy
+
+Required for React applications and controlled components (src/dom.js:8-19):
+
+```javascript
+{
+  dataKey: 'phone',
+  selector: '#phoneInput',
+  strategy: 'nativeValue' // Uses native setter for React
+}
+```
+
+<Info>
+This strategy uses the native value setter from the element's prototype, ensuring React's change detection is triggered properly.
+</Info>
+
+**Use for**: React controlled inputs, Vue.js inputs, other framework-managed inputs
+
+### Text Strategy
+
+Sets the text content of an element:
+
+```javascript
+{
+  dataKey: 'name',
+  selector: '#welcomeMessage',
+  strategy: 'text' // Sets element.innerText
+}
+```
+
+**Use for**: `<div>`, `<span>`, `<p>`, or any display element
+
+### Click Strategy
+
+Triggers a click event on the element:
+
+```javascript
+{
+  dataKey: 'acceptTerms',
+  selector: '#termsCheckbox',
+  strategy: 'click' // Calls element.click()
+}
+```
+
+**Use for**: Checkboxes, buttons, custom UI components
+
+## Dynamic Selectors
+
+Selectors can be functions for dynamic element targeting:
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'firstName',
+      selector: ({ dataKey, value }) => {
+        // Dynamic logic based on data
+        if (value.length > 20) {
+          return '#shortNameInput';
+        }
+        return `#${dataKey}Input`;
+      },
+      strategy: 'value'
+    }
+  ]
+});
+```
+
+**Function parameters**:
+- `dataKey` - The configured data key
+- `strategy` - The configured strategy
+- `value` - The actual value from lead data
+
+## Lifecycle Hooks
+
+### Before Action Hook
+
+Execute custom logic before filling (src/index.js:82):
+
+```javascript
+{
+  dataKey: 'email',
+  selector: '#email',
+  beforeAction: ({ value, selector, strategy, element }) => {
+    console.log(`About to fill ${selector} with ${value}`);
+    // Clear validation errors
+    element?.classList.remove('error');
+  }
+}
+```
+
+<Note>
+The `element` may be `null` if the selector doesn't match any DOM element yet. The SDK retries selection after `beforeAction` completes.
+</Note>
+
+### After Action Hook
+
+Execute custom logic after filling (src/index.js:89):
+
+```javascript
+{
+  dataKey: 'phone',
+  selector: '#phone',
+  afterAction: ({ element, value, selector, strategy }) => {
+    // Mark field as pre-filled
+    element.classList.add('autofilled');
+    // Trigger validation
+    element.dispatchEvent(new Event('blur'));
+  }
+}
+```
+
+## Advanced Examples
+
+### Multi-Step Form Autofill
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'email',
+      selector: '#step1-email',
+      strategy: 'value',
+      afterAction: ({ element }) => {
+        // Auto-advance to next step
+        document.getElementById('nextStepBtn').click();
+      }
+    }
+  ]
+});
+```
+
+### Conditional Autofill
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'preferredLanguage',
+      selector: '#languageDropdown',
+      beforeAction: ({ value }) => {
+        // Only fill if language is supported
+        const supported = ['en', 'es', 'fr'];
+        if (!supported.includes(value)) {
+          return false; // Prevent filling
+        }
+      },
+      strategy: 'value'
+    }
+  ]
+});
+```
+
+### React Integration
+
+```javascript
+const zenfi = new ZenfiSDK({
+  targets: [
+    {
+      dataKey: 'name',
+      selector: 'input[name="fullName"]',
+      strategy: 'nativeValue', // Important for React!
+      afterAction: ({ element }) => {
+        // Trigger React's onChange
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  ]
+});
+```
+
+## Implementation Details
+
+### Fill Process (src/index.js:63-91)
+
+1. **Fetch Data**: Calls `fetchData()` to retrieve lead information
+2. **Iterate Targets**: Loops through each target configuration
+3. **Value Check**: Skips if `leadInfo[dataKey]` is `null` or `undefined`
+4. **Resolve Selector**: Evaluates selector (string or function)
+5. **Before Hook**: Executes `beforeAction` if defined
+6. **Element Selection**: Queries DOM for matching element
+7. **Fill Element**: Applies the strategy to populate the element
+8. **After Hook**: Executes `afterAction` if defined
+
+### Null Value Handling (src/index.js:74)
+
+```javascript
+const value = (this.leadInfo || {})[dataKey];
+if (isNil(value)) return; // Skip if null or undefined
+```
+
+Targets are automatically skipped if:
+- Lead data hasn't been fetched yet
+- The specified `dataKey` doesn't exist in lead info
+- The value is `null` or `undefined`
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Fields Not Filling">
+    **Common causes**:
+    - No valid token (check `zenfi.token`)
+    - Incorrect CSS selector (verify with DevTools)
+    - Element not yet in DOM (call `fillTargets()` after render)
+    - Wrong strategy (use `nativeValue` for React)
+    
+    **Debug**:
+    ```javascript
+    await zenfi.fetchData();
+    console.log('Lead Info:', zenfi.leadInfo);
+    ```
+  </Accordion>
+
+  <Accordion title="React Inputs Not Updating">
+    Use `nativeValue` strategy and dispatch input event:
+    ```javascript
+    {
+      strategy: 'nativeValue',
+      afterAction: ({ element }) => {
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Timing Issues with SPA Navigation">
+    Call `fillTargets()` after route changes:
+    ```javascript
+    router.afterEach(() => {
+      setTimeout(() => zenfi.fillTargets(), 100);
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Card title="Next Steps" icon="arrow-right" href="/concepts/event-tracking">
+  Learn how to track user events and conversions
+</Card>

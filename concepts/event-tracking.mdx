@@ -1,0 +1,450 @@
+---
+title: 'Event Tracking'
+description: 'Learn how to track conversions, abortions, and page views with the Zenfi SDK'
+icon: 'chart-line'
+---
+
+## Overview
+
+The Zenfi SDK provides comprehensive event tracking to monitor lead behavior throughout your funnel. Track conversions when users progress, abortions when they're rejected, and page views for analytics.
+
+## Event Types
+
+Zenfi supports three primary event types:
+
+<CardGroup cols={3}>
+  <Card title="Conversions" icon="check-circle" color="#10b981">
+    User progresses forward in the funnel (signup, purchase, etc.)
+  </Card>
+  <Card title="Abortions" icon="circle-xmark" color="#ef4444">
+    User is rejected or exits the funnel (declined, insufficient credit)
+  </Card>
+  <Card title="Page Views" icon="eye" color="#3b82f6">
+    User navigates to different pages in your application
+  </Card>
+</CardGroup>
+
+## Conversion Tracking
+
+### Basic Usage
+
+Track successful user actions with `trackConversion()`:
+
+```javascript
+zenfi.trackConversion('signup', {
+  plan: 'premium',
+  amount: 99.99
+});
+```
+
+### Method Signature
+
+```javascript
+zenfi.trackConversion(name, properties)
+```
+
+<ParamField path="name" type="string" required>
+  Descriptive name for the conversion event (e.g., `signup`, `addToCart`, `purchase`)
+</ParamField>
+
+<ParamField path="properties" type="object">
+  Additional metadata about the event. Any JSON-serializable object.
+</ParamField>
+
+### Common Conversion Events
+
+<CodeGroup>
+```javascript User Registration
+zenfi.trackConversion('registration', {
+  method: 'email',
+  referralSource: 'google_ads'
+});
+```
+
+```javascript Form Submission
+zenfi.trackConversion('formSubmit', {
+  formName: 'loanApplication',
+  step: 1,
+  completedFields: 8
+});
+```
+
+```javascript Purchase
+zenfi.trackConversion('purchase', {
+  productId: 'loan_12345',
+  amount: 5000,
+  currency: 'USD',
+  interestRate: 8.5
+});
+```
+
+```javascript Offer Accepted
+zenfi.trackConversion('offerAccepted', {
+  offerId: 'offer_789',
+  loanAmount: 10000,
+  term: 24
+});
+```
+</CodeGroup>
+
+## Abortion Tracking
+
+### Basic Usage
+
+Track when users are rejected or exit the funnel:
+
+```javascript
+zenfi.trackAbortion('rejected', {
+  reason: 'insufficient_credit_score',
+  creditScore: 580
+});
+```
+
+### Method Signature
+
+```javascript
+zenfi.trackAbortion(name, properties)
+```
+
+<ParamField path="name" type="string" required>
+  Descriptive name for the abortion event (e.g., `rejected`, `declined`, `abandoned`)
+</ParamField>
+
+<ParamField path="properties" type="object">
+  Additional metadata about why the user was aborted from the funnel
+</ParamField>
+
+### Common Abortion Events
+
+<CodeGroup>
+```javascript Credit Rejection
+zenfi.trackAbortion('creditRejection', {
+  reason: 'score_too_low',
+  requiredScore: 650,
+  actualScore: 590
+});
+```
+
+```javascript Offer Declined
+zenfi.trackAbortion('offerDeclined', {
+  reason: 'rate_too_high',
+  offeredRate: 12.5,
+  expectedRate: 8.0
+});
+```
+
+```javascript Form Abandonment
+zenfi.trackAbortion('formAbandoned', {
+  formName: 'creditApplication',
+  step: 3,
+  totalSteps: 5,
+  timeSpent: 180 // seconds
+});
+```
+
+```javascript Verification Failed
+zenfi.trackAbortion('verificationFailed', {
+  verificationType: 'identity',
+  attempts: 3
+});
+```
+</CodeGroup>
+
+## Page View Tracking
+
+### Manual Tracking
+
+Track individual page views:
+
+```javascript
+zenfi.trackPageView();
+```
+
+This automatically captures URL metadata (src/index.js:113-123):
+
+```javascript
+{
+  href: window.location.href,
+  hash: window.location.hash,
+  search: window.location.search,
+  protocol: window.location.protocol,
+  hostname: window.location.hostname,
+  pathname: window.location.pathname
+}
+```
+
+### Automatic Tracking
+
+Enable automatic page view tracking for SPAs:
+
+```javascript
+zenfi.initPageViewsTracking();
+```
+
+<Info>
+This sets up event listeners that automatically track page views on navigation changes, perfect for single-page applications.
+</Info>
+
+**Implementation** (src/index.js:125-129):
+1. Tracks initial page view immediately
+2. Adds `locationchange` event listener
+3. Tracks subsequent page views on navigation
+
+### SPA Framework Integration
+
+<CodeGroup>
+```javascript React Router
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+function App() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    zenfi.trackPageView();
+  }, [location]);
+  
+  return <Routes>...</Routes>;
+}
+```
+
+```javascript Vue Router
+router.afterEach((to, from) => {
+  zenfi.trackPageView();
+});
+```
+
+```javascript Next.js
+import { useRouter } from 'next/router';
+import { useEffect } from 'react';
+
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
+  
+  useEffect(() => {
+    const handleRouteChange = () => zenfi.trackPageView();
+    router.events.on('routeChangeComplete', handleRouteChange);
+    return () => router.events.off('routeChangeComplete', handleRouteChange);
+  }, [router.events]);
+  
+  return <Component {...pageProps} />;
+}
+```
+</CodeGroup>
+
+## Event Implementation Details
+
+### Generic Track Method (src/index.js:93-103)
+
+All tracking methods use the internal `trackEvent()` method:
+
+```javascript
+trackEvent(type, name, properties) {
+  if (!this.token) return null;
+  if (!this.partnerName) throw new Error('Parameter "partnerName" is required to track events');
+  return trackEvent({
+    type,
+    partner: this.partnerName,
+    zenfiId: this.id,
+    event: name,
+    meta: properties,
+  });
+}
+```
+
+<Warning>
+**Requirements for tracking**:
+- Valid `token` must be set (returns `null` if missing)
+- `partnerName` must be configured (throws error if missing)
+</Warning>
+
+### API Endpoint (src/fetcher.js:31-55)
+
+Events are sent to:
+```
+POST https://api.zenfi.mx/webhooks/leads/:partner/:type
+```
+
+**URL Parameters**:
+- `:partner` - Your partner name from SDK configuration
+- `:type` - Event type (`converted` or `aborted`)
+
+**Request Body**:
+```json
+{
+  "zenfiId": "lead-id-12345",
+  "event": "signup",
+  "meta": {
+    "plan": "premium",
+    "amount": 99.99
+  }
+}
+```
+
+## Advanced Usage
+
+### Custom Event Wrapper
+
+Create domain-specific tracking functions:
+
+```javascript
+class LoanTracker {
+  constructor(zenfi) {
+    this.zenfi = zenfi;
+  }
+  
+  trackApplicationStart(loanType, amount) {
+    this.zenfi.trackConversion('applicationStart', {
+      loanType,
+      requestedAmount: amount,
+      timestamp: Date.now()
+    });
+  }
+  
+  trackApplicationComplete(applicationId) {
+    this.zenfi.trackConversion('applicationComplete', {
+      applicationId,
+      duration: this.calculateDuration()
+    });
+  }
+  
+  trackRejection(reason, details) {
+    this.zenfi.trackAbortion('applicationRejected', {
+      reason,
+      ...details
+    });
+  }
+}
+
+const tracker = new LoanTracker(zenfi);
+tracker.trackApplicationStart('personal', 5000);
+```
+
+### Event Chaining
+
+Track multiple related events:
+
+```javascript
+async function completeCheckout(cart) {
+  // Track checkout start
+  zenfi.trackConversion('checkoutStarted', {
+    itemCount: cart.items.length,
+    total: cart.total
+  });
+  
+  try {
+    const result = await processPayment(cart);
+    
+    // Track successful purchase
+    zenfi.trackConversion('purchaseComplete', {
+      orderId: result.orderId,
+      amount: cart.total,
+      paymentMethod: result.method
+    });
+  } catch (error) {
+    // Track payment failure
+    zenfi.trackAbortion('paymentFailed', {
+      error: error.message,
+      amount: cart.total
+    });
+  }
+}
+```
+
+### Error Tracking
+
+```javascript
+window.addEventListener('error', (event) => {
+  zenfi.trackAbortion('javascriptError', {
+    message: event.message,
+    filename: event.filename,
+    line: event.lineno,
+    column: event.colno
+  });
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Event Naming Conventions">
+    Use clear, consistent naming:
+    - **Use camelCase**: `formSubmit`, not `form_submit` or `FormSubmit`
+    - **Be specific**: `loanApplicationSubmit` instead of `submit`
+    - **Use action verbs**: `clickedButton`, `completedForm`
+    - **Stay consistent**: Pick a naming pattern and stick to it
+  </Accordion>
+
+  <Accordion title="Metadata Structure">
+    Keep metadata structured and consistent:
+    ```javascript
+    // Good - structured and consistent
+    zenfi.trackConversion('purchase', {
+      productId: 'loan_123',
+      amount: 5000,
+      currency: 'USD',
+      timestamp: Date.now()
+    });
+    
+    // Avoid - unstructured and inconsistent
+    zenfi.trackConversion('purchase', {
+      data: 'loan_123, 5000, USD'
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Required Configuration">
+    Always set `partnerName` during initialization:
+    ```javascript
+    const zenfi = new ZenfiSDK({
+      partnerName: 'yourpartner' // Required for event tracking
+    });
+    ```
+    
+    Without it, tracking methods will throw an error.
+  </Accordion>
+
+  <Accordion title="Performance Considerations">
+    - Events are fire-and-forget (non-blocking)
+    - No need to `await` tracking calls unless you need the response
+    - Track significant events only (avoid over-tracking)
+    - Batch similar events when possible
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<Steps>
+  <Step title="Verify Token">
+    Ensure a valid token is set:
+    ```javascript
+    console.log('Token:', zenfi.token);
+    if (!zenfi.token) {
+      console.error('No token - events will not be tracked');
+    }
+    ```
+  </Step>
+  
+  <Step title="Check Partner Name">
+    Verify `partnerName` is configured:
+    ```javascript
+    console.log('Partner:', zenfi.partnerName);
+    ```
+  </Step>
+  
+  <Step title="Monitor Network">
+    Open DevTools Network tab and filter for `zenfi.mx` to see outgoing events
+  </Step>
+  
+  <Step title="Validate Response">
+    Check the API response:
+    ```javascript
+    const response = await zenfi.trackConversion('test', { foo: 'bar' });
+    console.log('Response:', response);
+    ```
+  </Step>
+</Steps>
+
+<Card title="Next Steps" icon="arrow-right" href="/concepts/cookies">
+  Learn about cookie management and domain configuration
+</Card>

@@ -1,0 +1,441 @@
+---
+title: 'Tracking Events'
+description: 'Track conversions, abortions, and page views with Zenfi SDK'
+---
+
+## Overview
+
+The Zenfi SDK provides event tracking capabilities to monitor user behavior throughout your funnel. You can track:
+- **Conversions**: Users moving forward in the funnel
+- **Abortions**: Users being rejected or dropping off
+- **Page Views**: Automatic or manual page view tracking
+
+<Note>
+  The `partnerName` parameter is required when initializing the SDK to track events. Without it, tracking methods will throw an error.
+</Note>
+
+## Conversion Events
+
+Conversion events indicate that a user is progressing through your funnel.
+
+### trackConversion()
+
+Sends a conversion event to the Zenfi API at `https://api.zenfi.mx/webhooks/leads/:partner/converted`.
+
+<ParamField path="name" type="string" required>
+  Any descriptive name for the event to be tracked (e.g., `register`, `click`, `addToCart`).
+</ParamField>
+
+<ParamField path="properties" type="object">
+  Any data related to the event to be tracked.
+</ParamField>
+
+### Basic Example
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+});
+
+// Track a simple conversion
+zenfi.trackConversion('register', {
+  step: 1,
+  source: 'homepage',
+});
+```
+
+### E-commerce Example
+
+```javascript
+// Track add to cart
+zenfi.trackConversion('addToCart', {
+  price: 100,
+  amount: 2,
+  productId: 'PROD-123',
+  productName: 'Premium Plan',
+});
+
+// Track checkout
+zenfi.trackConversion('checkout', {
+  totalAmount: 200,
+  currency: 'USD',
+  items: 2,
+});
+
+// Track purchase
+zenfi.trackConversion('purchase', {
+  orderId: 'ORD-456',
+  amount: 200,
+  paymentMethod: 'credit_card',
+});
+```
+
+### Form Submission Example
+
+```javascript
+const form = document.getElementById('leadForm');
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  // Track form submission
+  zenfi.trackConversion('formSubmit', {
+    formName: 'leadForm',
+    formStep: 1,
+    fieldsCompleted: 5,
+  });
+  
+  // Submit form
+  form.submit();
+});
+```
+
+### Button Click Example
+
+```javascript
+const ctaButton = document.getElementById('ctaButton');
+
+ctaButton.addEventListener('click', () => {
+  zenfi.trackConversion('click', {
+    buttonId: 'ctaButton',
+    buttonText: 'Get Started',
+    page: window.location.pathname,
+  });
+});
+```
+
+## Abortion Events
+
+Abortion events indicate that a user was rejected or cannot move forward in the funnel.
+
+### trackAbortion()
+
+Sends an abortion event to the Zenfi API at `https://api.zenfi.mx/webhooks/leads/:partner/aborted`.
+
+<ParamField path="name" type="string" required>
+  Any descriptive name for the event to be tracked (e.g., `rejected`, `declinedOffer`).
+</ParamField>
+
+<ParamField path="properties" type="object">
+  Any data related to the event to be tracked.
+</ParamField>
+
+### Basic Example
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+});
+
+// Track a declined offer
+zenfi.trackAbortion('declinedOffer', {
+  reason: 'User got a better interest rate elsewhere',
+  offerId: 'OFFER-789',
+});
+```
+
+### Credit Application Example
+
+```javascript
+// Track rejection due to credit score
+zenfi.trackAbortion('creditRejection', {
+  reason: 'Credit score below minimum threshold',
+  minimumScore: 600,
+  userScore: 550,
+});
+
+// Track application abandonment
+zenfi.trackAbortion('abandonedApplication', {
+  reason: 'User closed browser during application',
+  completedSteps: 2,
+  totalSteps: 5,
+  timeSpent: 180, // seconds
+});
+```
+
+### Form Validation Example
+
+```javascript
+function validateForm(formData) {
+  if (!isValidEmail(formData.email)) {
+    zenfi.trackAbortion('validationFailed', {
+      field: 'email',
+      reason: 'Invalid email format',
+    });
+    return false;
+  }
+  
+  if (formData.age < 18) {
+    zenfi.trackAbortion('rejected', {
+      reason: 'User under minimum age requirement',
+      minAge: 18,
+      userAge: formData.age,
+    });
+    return false;
+  }
+  
+  return true;
+}
+```
+
+## Page View Tracking
+
+### trackPageView()
+
+Sends a conversion event with name "PageView" to the Zenfi API, including metadata about the visited URL.
+
+<Note>
+  This method takes no parameters. It automatically captures `href`, `hash`, `search`, `protocol`, `hostname`, and `pathname` from `window.location`.
+</Note>
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+});
+
+// Manually track a page view
+zenfi.trackPageView();
+
+// The event includes:
+// {
+//   href: 'https://example.com/offers?id=123#section',
+//   hash: '#section',
+//   search: '?id=123',
+//   protocol: 'https:',
+//   hostname: 'example.com',
+//   pathname: '/offers'
+// }
+```
+
+### initPageViewsTracking()
+
+Starts a listener that automatically tracks page view events on URL changes.
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+});
+
+// Enable automatic page view tracking
+zenfi.initPageViewsTracking();
+
+// This will:
+// 1. Track the current page view immediately
+// 2. Listen for URL changes (useful for SPAs)
+// 3. Automatically track each new page view
+```
+
+<Tip>
+  Use `initPageViewsTracking()` in Single Page Applications (SPAs) to automatically track route changes without manual calls.
+</Tip>
+
+### SPA Integration Example
+
+```javascript
+// React Router example
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+function App() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    const zenfi = new ZenfiSDK({
+      partnerName: 'credifast',
+    });
+    
+    // Initialize automatic tracking
+    zenfi.initPageViewsTracking();
+  }, []);
+  
+  return <YourApp />;
+}
+```
+
+```javascript
+// Vue Router example
+import { createRouter } from 'vue-router';
+
+const router = createRouter({
+  // ... router config
+});
+
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+});
+
+router.afterEach((to, from) => {
+  zenfi.trackPageView();
+});
+```
+
+## Event Data Structure
+
+All tracking methods internally call the `trackEvent()` method with the following structure:
+
+```javascript
+trackEvent(type, name, properties)
+// type: 'converted' or 'aborted'
+// name: event name
+// properties: event metadata
+```
+
+The SDK sends events with:
+- `type`: Event type (`converted` or `aborted`)
+- `partner`: Your partner name
+- `zenfiId`: User's Zenfi ID from cookies
+- `event`: Event name
+- `meta`: Event properties
+
+<Warning>
+  If no token is available (user hasn't clicked a Zenfi tracking link), the tracking methods will return `null` and no event will be sent.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive event names">
+    Choose clear, consistent naming conventions:
+    
+    ```javascript
+    // Good
+    zenfi.trackConversion('applicationSubmitted', { step: 3 });
+    zenfi.trackConversion('loanApproved', { amount: 5000 });
+    
+    // Avoid
+    zenfi.trackConversion('event1', {});
+    zenfi.trackConversion('click', {}); // Too generic
+    ```
+  </Accordion>
+
+  <Accordion title="Include relevant metadata">
+    Add contextual information to help analyze user behavior:
+    
+    ```javascript
+    zenfi.trackConversion('formSubmit', {
+      formName: 'leadForm',
+      step: 2,
+      timeSpent: 45,
+      fieldsCompleted: 8,
+      source: 'google_ads',
+      campaign: 'summer_promo',
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Track the entire funnel">
+    Monitor each step of the user journey:
+    
+    ```javascript
+    // Step 1: Initial interest
+    zenfi.trackConversion('landingPageView', { source: 'email' });
+    
+    // Step 2: Engagement
+    zenfi.trackConversion('calculatorUsed', { loanAmount: 10000 });
+    
+    // Step 3: Application
+    zenfi.trackConversion('applicationStarted', { step: 1 });
+    zenfi.trackConversion('applicationCompleted', { step: 5 });
+    
+    // Step 4: Decision
+    zenfi.trackConversion('offerAccepted', { amount: 10000 });
+    // OR
+    zenfi.trackAbortion('offerDeclined', { reason: 'high_interest_rate' });
+    ```
+  </Accordion>
+
+  <Accordion title="Handle errors gracefully">
+    Always check if the SDK is properly initialized:
+    
+    ```javascript
+    try {
+      const zenfi = new ZenfiSDK({
+        partnerName: 'credifast',
+      });
+      
+      zenfi.trackConversion('register', { step: 1 });
+    } catch (error) {
+      console.error('Zenfi tracking failed:', error);
+      // Continue with your application logic
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Complete Tracking Example
+
+```javascript
+const zenfi = new ZenfiSDK({
+  partnerName: 'credifast',
+  cookiesDomain: 'credifast.com',
+  targets: [
+    {
+      dataKey: 'name',
+      selector: '#nameInput',
+      strategy: 'value',
+    },
+    {
+      dataKey: 'email',
+      selector: '#emailInput',
+      strategy: 'value',
+    },
+  ],
+});
+
+// Initialize automatic page view tracking
+zenfi.initPageViewsTracking();
+
+// Auto-fill form
+await zenfi.fillTargets();
+
+// Track form interactions
+const form = document.getElementById('loanForm');
+const inputs = form.querySelectorAll('input');
+
+inputs.forEach(input => {
+  input.addEventListener('focus', () => {
+    zenfi.trackConversion('fieldFocused', {
+      fieldName: input.name,
+    });
+  });
+});
+
+// Track form submission
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = new FormData(form);
+  
+  zenfi.trackConversion('formSubmit', {
+    loanAmount: formData.get('amount'),
+    loanPurpose: formData.get('purpose'),
+  });
+  
+  // Submit to your API
+  const response = await fetch('/api/loan-application', {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (response.ok) {
+    zenfi.trackConversion('applicationApproved', {
+      applicationId: response.id,
+    });
+  } else {
+    zenfi.trackAbortion('applicationRejected', {
+      reason: response.error,
+    });
+  }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Event Tracking API" icon="code" href="/api/track-conversion">
+    View complete event tracking API documentation
+  </Card>
+  <Card title="Target Configuration" icon="bullseye" href="/guides/target-configuration">
+    Learn about form autofill strategies
+  </Card>
+</CardGroup>
