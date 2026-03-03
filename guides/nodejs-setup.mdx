@@ -10,11 +10,11 @@ Install the Zenfi SDK using npm or yarn:
 <CodeGroup>
 
 ```bash npm
-npm install --save zenfi-sdk
+npm install --save @zenfi/js-sdk
 ```
 
 ```bash yarn
-yarn add zenfi-sdk
+yarn add @zenfi/js-sdk
 ```
 
 </CodeGroup>
@@ -26,13 +26,13 @@ yarn add zenfi-sdk
     Import the ZenfiSDK class into your project:
 
     ```javascript
-    const ZenfiSDK = require('zenfi-sdk');
+    const ZenfiSDK = require('@zenfi/js-sdk');
     ```
 
     Or using ES6 imports:
 
     ```javascript
-    import ZenfiSDK from 'zenfi-sdk';
+    import ZenfiSDK from '@zenfi/js-sdk';
     ```
   </Step>
 
@@ -97,7 +97,7 @@ yarn add zenfi-sdk
 ## Complete Example
 
 ```javascript
-const ZenfiSDK = require('zenfi-sdk');
+const ZenfiSDK = require('@zenfi/js-sdk');
 
 const zenfi = new ZenfiSDK({
   partnerName: 'credifast',
